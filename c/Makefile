@@ -31,6 +31,8 @@ all: enclave.bin testhost.bin libjnishim.so sign fuzz.bin enclave.testsigned $(T
 .PHONY: install
 install: sign libjnishim.so
 	mkdir -pv $(INSTALL_DIR)
+	cp -fv enclave.Standard_DC1s_v3 $(INSTALL_DIR)/enclave-$(if $(ENCLAVE_ID),$(ENCLAVE_ID),Standard_DC1s_v3-$(shell $(OE_DIR)/bin/oesign dump -e enclave.Standard_DC1s_v3 | fgrep -i mrenclave | cut -d '=' -f2)).signed
+	cp -fv libjnishim.so $(INSTALL_DIR)/libjnishim-$(if $(ENCLAVE_ID),$(ENCLAVE_ID),Standard_DC1s_v3-$(shell $(OE_DIR)/bin/oesign dump -e enclave.Standard_DC1s_v3 | fgrep -i mrenclave | cut -d '=' -f2)).so
 	cp -fv enclave.Standard_DC2s_v3 $(INSTALL_DIR)/enclave-$(if $(ENCLAVE_ID),$(ENCLAVE_ID),Standard_DC2s_v3-$(shell $(OE_DIR)/bin/oesign dump -e enclave.Standard_DC2s_v3 | fgrep -i mrenclave | cut -d '=' -f2)).signed
 	cp -fv libjnishim.so $(INSTALL_DIR)/libjnishim-$(if $(ENCLAVE_ID),$(ENCLAVE_ID),Standard_DC2s_v3-$(shell $(OE_DIR)/bin/oesign dump -e enclave.Standard_DC2s_v3 | fgrep -i mrenclave | cut -d '=' -f2)).so
 	cp -fv enclave.Standard_DC24s_v3 $(INSTALL_DIR)/enclave-$(if $(ENCLAVE_ID),$(ENCLAVE_ID),Standard_DC24s_v3-$(shell $(OE_DIR)/bin/oesign dump -e enclave.Standard_DC24s_v3 | fgrep -i mrenclave | cut -d '=' -f2)).signed
@@ -255,10 +257,13 @@ public.pem:
 	openssl rsa -in private.pem -pubout -out public.pem
 
 .PHONY: sign
-sign: enclave-debug.signed enclave.Standard_DC2s_v3 enclave.Standard_DC24s_v3
+sign: enclave-debug.signed enclave.Standard_DC1s_v3 enclave.Standard_DC2s_v3 enclave.Standard_DC24s_v3
 
 enclave-debug.signed: enclave.bin public.pem constant_time_check.test
 	$(OE_DIR)/bin/oesign sign -e enclave.bin -c cds-test.conf -k private.pem -o $@
+
+enclave.Standard_DC1s_v3: enclave.bin public.pem constant_time_check.test cds_Standard_DC1s_v3.conf
+	$(OE_DIR)/bin/oesign sign -e enclave.bin -c cds_Standard_DC1s_v3.conf -k private.pem -o $@
 
 enclave.Standard_DC2s_v3: enclave.bin public.pem constant_time_check.test cds_Standard_DC2s_v3.conf
 	$(OE_DIR)/bin/oesign sign -e enclave.bin -c cds_Standard_DC2s_v3.conf -k private.pem -o $@
@@ -282,6 +287,7 @@ clean:
       enclave.bin \
       enclave.testsigned \
       enclave.testbin \
+      enclave.Standard_DC1s_v3 \
       enclave.Standard_DC2s_v3 \
       enclave.Standard_DC24s_v3 \
       enclave-debug.signed \

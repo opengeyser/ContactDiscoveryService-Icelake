@@ -1,0 +1,61 @@
+name: Enclave release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  DOCKER_BUILD_ARGS: --cache-from type=gha --cache-to type=gha
+  DOCKER_BUILDKIT: 1
+  BUILDX_CONTAINER: container
+
+jobs:
+  release:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          submodules: recursive
+
+      - name: Expose Docker environment variables for gha cache
+        uses: crazy-max/ghaction-github-runtime@3cb05d89e1f492524af3d41a1c98c83bc3025124 # v3.1.0
+
+      - name: Setup Docker
+        run: docker buildx create --use --name container --driver docker-container
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@c5195efecf7bdfc987ee8bae7a71cb8b11521c00 # v4.7.1
+        with:
+          distribution: 'temurin'
+          java-version: 21
+          cache: 'maven'
+
+      - name: Set up necessary SGX stuff
+        run: sudo ./c/docker/sgx_runtime_libraries.sh
+
+      - name: Build enclave artifacts
+        run: ./mvnw -e -B exec:exec@enclave-release
+
+      - name: Get untracked artifacts
+        id: artifacts
+        run: |
+            git ls-files --others --exclude-standard src/main/resources
+            echo 'artifacts<<EOF' >> "$GITHUB_OUTPUT"
+            git ls-files --others --exclude-standard src/main/resources >> "$GITHUB_OUTPUT"
+            echo 'EOF' >> "$GITHUB_OUTPUT"
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7.0.8
+        with:
+          commit-message: "chore: release enclave artifacts"
+          title: "Release enclave artifacts"
+          body: "Automated release of enclave artifacts."
+          base: ${{ github.ref_name }}
+          branch: "enclave-release/${{ github.ref_name }}"
+          add-paths: ${{ steps.artifacts.outputs.artifacts }}
