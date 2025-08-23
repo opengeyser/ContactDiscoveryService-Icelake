@@ -1,8 +1,17 @@
 name: Build and push Docker image
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      env:
+        description: Environment to build for
+        required: true
+        type: choice
+        options:
+          - dev
+          - staging
+          - prod
+        default: dev
 
 env:
   DOCKER_BUILD_ARGS: --cache-from type=gha --cache-to type=gha
@@ -16,6 +25,7 @@ permissions:
 jobs:
   build-and-push:
     runs-on: ubuntu-22.04
+    environment: ${{ github.event.inputs.env }}
     permissions:
       id-token: write # This is required for requesting the JWT
       contents: read  # This is required for actions/checkout
@@ -61,4 +71,4 @@ jobs:
         run: |
           ./mvnw -e -B deploy \
             -Dpackaging=docker \
-            -Djib.to.image="${{ secrets.REGISTRY_LOGIN_SERVER }}/cdsi:${GITHUB_REF_NAME}"
+            -Djib.to.image="${{ secrets.REGISTRY_LOGIN_SERVER }}/cdsi:${{ github.sha }}"
