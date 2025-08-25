@@ -15,4 +15,3 @@ out/
 .vscode/
 c/proto/cdsi.c
 c/proto/cdsi.h
-src/main/resources/org/signal/cdsi/enclave/*debug*
